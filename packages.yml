@@ -1,0 +1,10 @@
+packages:
+ - package: fishtown-analytics/dbt_utils
+   version: 0.6.6
+ - package: fivetran/shopify
+   version: 0.4.2
+ - package: fivetran/pinterest_source
+   version: 0.3.3
+ - package: fivetran/pinterest
+   version: 0.3.3
+ 

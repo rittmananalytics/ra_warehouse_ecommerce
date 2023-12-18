@@ -1,0 +1,268 @@
+name: 'ra_data_warehouse'
+version: '0.0.3'
+
+require-dbt-version: ">=0.17.0"
+config-version: 2
+
+profile: 'lick_data_warehouse'
+
+source-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+data-paths: ["data"]
+macro-paths: ["macros"]
+
+target-path: "target"  # directory which will store compiled SQL files
+clean-targets:         # directories to be removed by `dbt clean`
+    - "target"
+    - "dbt_modules"
+
+on-run-start:
+    - "create table if not exists {{ generate_prefixed_target_name() }}_logs.audit_dbt_results (object varchar, status varchar, row_count numeric, execution_time numeric, load_ts timestamp)"
+
+on-run-end:
+    - "insert into {{ generate_prefixed_target_name() }}_logs.audit_dbt_results (object, status, row_count, execution_time, load_ts) values {{ results_values(results) }}"
+
+models:
+  ra_data_warehouse:
+# source adapter general settings
+      sources:
+          materialized: view
+          schema: staging
+
+# integration layer settings
+      integration:
+          materialized: view
+          schema: staging
+
+# warehouse layer settings
+      warehouse:
+          materialized: table
+
+  shopify:
+    +schema: staging # leave blank for just the target_schema
+  shopify_source:
+    +schema: staging # leave blank for just the target_schema
+    +materialized: table
+    tmp:
+      +materialized: table
+  pinterest_source:
+    +schema: staging
+    +materialized: table
+    tmp:
+      +materialized: table
+  pinterest:
+    +schema: staging
+    +materialized: table
+    intermediate:
+      +materialized: ephemeral
+
+
+# seeds (reference files, loaded into tables) module settings
+seeds:
+  ra_data_warehouse:
+    +schema: seed
+    orders_data:
+      +column_types:
+        order_id: varchar(50)
+        customer_id: varchar(50)
+    customers_data:
+      +column_types:
+        customer_id: varchar(50)
+    customer_status_test:
+      +column_types:
+        customer_id: varchar(50)
+    test_first_order_product_data:
+      +column_types:
+        customer_id: varchar(50)
+        order_id: varchar(50)
+
+vars:
+  crm_warehouse_company_sources: []
+  crm_warehouse_contact_sources: []
+  crm_warehouse_conversations_sources: []
+  marketing_warehouse_ad_campaign_sources: ['facebook_ads','google_ads']
+  marketing_warehouse_ad_campaign_performance_sources: ['google_ads']
+  marketing_warehouse_ad_performance_sources: ['facebook_ads','google_ads']
+  marketing_warehouse_ad_group_sources: ['facebook_ads','google_ads']
+  marketing_warehouse_ad_sources: ['facebook_ads','google_ads']
+  marketing_warehouse_email_event_sources: []
+  marketing_warehouse_email_list_sources: []
+  marketing_warehouse_deal_sources: []
+  projects_warehouse_delivery_sources: []
+  projects_warehouse_timesheet_sources: []
+  finance_warehouse_invoice_sources: []
+  finance_warehouse_transaction_sources: []
+  finance_warehouse_payment_sources: []
+  product_warehouse_event_sources: ['segment_events_page','segment_shopify_events_page','segment_shopify_events_track']
+  ecommerce_warehouse_product_sources: ['shopify_ecommerce']
+  ecommerce_warehouse_order_sources: ['shopify_ecommerce']
+  ecommerce_warehouse_order_lines_sources: ['shopify_ecommerce']
+  ecommerce_warehouse_customer_sources: ['shopify_ecommerce']
+  ecommerce_warehouse_transaction_sources: ['shopify_ecommerce']
+  ecommerce_warehouse_customer_cohorts_sources: ['shopify_ecommerce']
+
+  subscriptions_warehouse_sources: []
+
+  stg_facebook_ads_id-prefix: fbads-
+  stg_facebook_ads_etl: segment
+  stg_facebook_ads_stitch_database:
+  stg_facebook_ads_stitch_schema: stitch_facebook_ads
+  stg_facebook_ads_stitch_ad_performance_table: "{{ source('stitch_facebook_ads', 'insights') }}"
+  stg_facebook_ads_stitch_ad_performance_table_snowflake: "{{ source('stitch_facebook_ads', 'ads_insights') }}"
+  stg_facebook_ads_stitch_ad_groups_table: "{{ source('stitch_facebook_ads', 'adsets') }}"
+  stg_facebook_ads_stitch_ad_groups_table_snowflake: "{{ source('stitch_facebook_ads', 'adsets') }}"
+  stg_facebook_ads_stitch_ads_table: "{{ source('stitch_facebook_ads', 'ads') }}"
+  stg_facebook_ads_stitch_campaigns_table: "{{ source('stitch_facebook_ads', 'campaigns') }}"
+  stg_facebook_ads_segment_database: test
+  stg_facebook_ads_segment_schema: facebook_ads
+  stg_facebook_ads_segment_ad_performance_table: "{{ source('segment_facebook_ads', 'insights') }}"
+  stg_facebook_ads_segment_ad_groups_table: "{{ source('segment_facebook_ads', 'ad_adsets') }}"
+  stg_facebook_ads_segment_ads_table: "{{ source('segment_facebook_ads', 'ads') }}"
+  stg_facebook_ads_segment_campaigns_table: "{{ source('segment_facebook_ads', 'campaigns') }}"
+  stg_facebook_ads_fivetran_database: test
+  stg_facebook_ads_fivetran_schema: fivetran_facebook_ads
+  stg_facebook_ads_fivetran_ad_performance_table: "{{ source('fivetran_facebook_ads', 'insights') }}"
+  stg_facebook_ads_fivetran_ad_groups_table: "{{ source('fivetran_facebook_ads', 'ad_adsets') }}"
+  stg_facebook_ads_fivetran_ads_table: "{{ source('fivetran_facebook_ads', 'ads') }}"
+  stg_facebook_ads_fivetran_campaigns_table: "{{ source('fivetran_facebook_ads', 'campaigns') }}"
+
+  stg_google_ads_id-prefix: gads-
+  stg_google_ads_etl: segment
+  stg_google_ads_stitch_database:
+  stg_google_ads_stitch_schema: stitch_google_ads
+  stg_google_ads_stitch_campaign_performance_table: "{{ source('stitch_google_ads', 'CAMPAIGN_PERFORMANCE_REPORT') }}"
+  stg_google_ads_stitch_campaigns_table: "{{ source('stitch_google_ads', 'campaigns') }}"
+  stg_google_ads_segment_database: test
+  stg_google_ads_segment_schema: google_ads
+  stg_google_ads_segment_campaign_performance_table: "{{ source('segment_google_ads', 'campaign_performance_reports') }}"
+  stg_google_ads_segment_ad_performance_table: "{{ source('segment_google_ads', 'ad_performance_reports') }}"
+  stg_google_ads_segment_ad_groups_table: "{{ source('segment_google_ads', 'ad_groups') }}"
+  stg_google_ads_segment_ad_table: "{{ source('segment_google_ads', 'ads') }}"
+  stg_google_ads_segment_campaigns_table: "{{ source('segment_google_ads', 'campaigns') }}"
+  ads_campaigns_only: true
+
+  stg_segment_events_id-prefix: segment-
+  stg_segment_events_etl: segment
+  stg_segment_events_segment_database: test
+  stg_segment_events_segment_schema: lick
+  stg_segment_events_segment_tracks_table: "{{ source('segment', 'tracks') }}"
+  stg_segment_events_segment_pages_table: "{{ source('segment', 'pages') }}"
+  stg_segment_events_segment_users_table: "{{ source('segment', 'users') }}"
+  stg_segment_events_site: lick.com
+  enable_event_type_mapping: true
+
+  stg_segment_shopify_events_id-prefix: segment_shopify-
+  stg_segment_shopify_events_etl: segment
+  stg_segment_shopify_events_segment_database: test
+  stg_segment_shopify_events_segment_schema: production_shopify_by_littledata
+  stg_segment_shopify_events_segment_tracks_table: "{{ source('segment_shopify', 'tracks') }}"
+  stg_segment_shopify_events_segment_pages_table: "{{ source('segment_shopify', 'pages') }}"
+  stg_segment_shopify_events_segment_users_table: "{{ source('segment_shopify', 'users') }}"
+  stg_segment_shopify_events_segment_checkout_started_table: "{{ source('segment_shopify', 'checkout_started') }}"
+  stg_segment_shopify_events_segment_order_completed_table: "{{ source('segment_shopify', 'order_completed') }}"
+  stg_segment_shopify_events_segment_order_refunded_table: "{{ source('segment_shopify', 'order_refunded') }}"
+  stg_segment_shopify_events_segment_order_deleted_table: "{{ source('segment_shopify', 'order_deleted') }}"
+  stg_segment_shopify_events_site: lick.com
+
+  stg_shopify_ecommerce_id-prefix: shopify-
+  stg_shopify_ecommerce_etl: fivetran
+  stg_shopify_ecommerce_fivetran_database: test
+  stg_shopify_ecommerce_fivetran_schema: shopify
+  stg_shopify_ecommerce_fivetran_customer_tags_table: "{{ source('fivetran_shopify', 'customer_tag') }}"
+  stg_shopify_ecommerce_fivetran_order_tags_table: "{{ source('fivetran_shopify', 'order_tag') }}"
+
+
+  stg_zendesk_messaging_id-prefix: intercom-
+  stg_zendesk_messaging_etl: fivetran
+  stg_zendesk_messaging_stitch_database: test
+  stg_zendesk_messaging_stitch_schema: fivetran_zendesk_chat
+  stg_zendesk_messaging_stitch_contacts_table: contacts
+  stg_zendesk_messaging_stitch_conversations_table: conversations
+  stg_zendesk_messaging_tags: ["intercom", "messaging"]
+
+
+  web_sessionization_trailing_window: 3
+  web_inactivity_cutoff: 30 * 60
+  attribution_create_account_event_type: customer_created
+  attribution_conversion_event_type: order_completed
+  attribution_topup_event_type: account_credited
+  attribution_converter_ltv: 200
+
+
+  enable_companies_merge_file: false
+  enable_ip_geo_enrichment: false
+
+  group:                "{{ source('zendesk', 'group') }}"
+  brand:                "{{ source('zendesk', 'brand') }}"
+  domain_name:          "{{ source('zendesk', 'domain_name') }}"
+  organization_tag:     "{{ source('zendesk', 'organization_tag') }}"
+  organization:         "{{ source('zendesk', 'organization') }}"
+  schedule:             "{{ source('zendesk', 'schedule') }}"
+  satisfaction_rating:  "{{ source('zendesk', 'satisfaction_rating') }}"
+  ticket:               "{{ source('zendesk', 'ticket') }}"
+  ticket_form_history:  "{{ source('zendesk', 'ticket_form_history') }}"
+  ticket_comment:       "{{ source('zendesk', 'ticket_comment') }}"
+  ticket_field_history: "{{ source('zendesk', 'ticket_field_history') }}"
+  ticket_schedule:      "{{ source('zendesk', 'ticket_schedule') }}"
+  ticket_tag:           "{{ source('zendesk', 'ticket_tag') }}"
+  user_tag:             "{{ source('zendesk', 'user_tag') }}"
+  user:                 "{{ source('zendesk', 'user') }}"
+
+  using_schedules:            True
+  using_domain_names:         True
+  using_user_tags:            True
+  using_ticket_form_history:  True
+  using_organization_tags:    True
+  using_satisfaction_ratings: True
+
+  shopify_database: test
+  shopify_schema: shopify
+  pinterest_database: test
+  pinterest_schema: fivetran_pinterest_ads
+
+  shopify:
+    shopify_customer:           "{{ ref('stg_shopify__customer') }}"
+    shopify_order:              "{{ ref('stg_shopify__order') }}"
+    shopify_order_line:         "{{ ref('stg_shopify__order_line') }}"
+    shopify_order_line_refund:  "{{ ref('stg_shopify__order_line_refund') }}"
+    shopify_product:            "{{ ref('stg_shopify__product') }}"
+    shopify_product_variant:    "{{ ref('stg_shopify__product_variant') }}"
+    shopify_transaction:        "{{ ref('stg_shopify__transaction') }}"
+    shopify_refund:             "{{ ref('stg_shopify__refund') }}"
+    shopify_order_adjustment:   "{{ ref('stg_shopify__order_adjustment') }}"
+
+  shopify_source:
+    customer_source:                        "{{ source('shopify','customer') }}"
+    order_line_refund_source:               "{{ source('shopify','order_line_refund') }}"
+    order_line_source:                      "{{ source('shopify','order_line') }}"
+    order_source:                           "{{ source('shopify','order') }}"
+    product_source:                         "{{ source('shopify','product') }}"
+    product_variant_source:                 "{{ source('shopify','product_variant') }}"
+    transaction_source:                     "{{ source('shopify','transaction') }}"
+    refund_source:                          "{{ source('shopify','refund') }}"
+    order_adjustment_source:                "{{ source('shopify','order_adjustment') }}"
+
+    customer_pass_through_columns:          []
+    order_line_refund_pass_through_columns: []
+    order_line_pass_through_columns:        []
+    order_pass_through_columns:             []
+    product_pass_through_columns:           []
+    product_variant_pass_through_columns:   []
+    transaction_pass_through_columns:       []
+
+  pinterest_source:
+    ad_group_history: "{{ source('pinterest_ads','ad_group_history') }}"
+    campaign_history: "{{ source('pinterest_ads','campaign_history') }}"
+    pin_promotion_history: "{{ source('pinterest_ads','pin_promotion_history') }}"
+    pin_promotion_report: "{{ source('pinterest_ads','pin_promotion_report') }}"
+    dbt_utils_dispatch_list: ['spark_utils', 'fivetran_utils']
+    fivetran_utils_dispatch_list: ['spark_utils']
+    pin_promotion_report_pass_through_metric: []
+
+
+
+
+
+  dbt_utils_dispatch_list: [spark_utils, fivetran_utils]
+  fivetran_utils_dispatch_list: [spark_utils]
