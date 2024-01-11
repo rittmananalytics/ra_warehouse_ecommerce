@@ -1,10 +1,10 @@
-name: 'ra_data_warehouse'
+name: 'ra_warehouse_ecommerce'
 version: '0.0.3'
 
 require-dbt-version: ">=0.17.0"
 config-version: 2
 
-profile: 'lick_data_warehouse'
+profile: 'ra_warehouse_ecommerce'
 
 source-paths: ["models"]
 analysis-paths: ["analysis"]
@@ -145,11 +145,11 @@ vars:
   stg_segment_events_id-prefix: segment-
   stg_segment_events_etl: segment
   stg_segment_events_segment_database: test
-  stg_segment_events_segment_schema: lick
+  stg_segment_events_segment_schema: segment
   stg_segment_events_segment_tracks_table: "{{ source('segment', 'tracks') }}"
   stg_segment_events_segment_pages_table: "{{ source('segment', 'pages') }}"
   stg_segment_events_segment_users_table: "{{ source('segment', 'users') }}"
-  stg_segment_events_site: lick.com
+  stg_segment_events_site: site.com
   enable_event_type_mapping: true
 
   stg_segment_shopify_events_id-prefix: segment_shopify-
@@ -163,7 +163,7 @@ vars:
   stg_segment_shopify_events_segment_order_completed_table: "{{ source('segment_shopify', 'order_completed') }}"
   stg_segment_shopify_events_segment_order_refunded_table: "{{ source('segment_shopify', 'order_refunded') }}"
   stg_segment_shopify_events_segment_order_deleted_table: "{{ source('segment_shopify', 'order_deleted') }}"
-  stg_segment_shopify_events_site: lick.com
+  stg_segment_shopify_events_site: site.com
 
   stg_shopify_ecommerce_id-prefix: shopify-
   stg_shopify_ecommerce_etl: fivetran
